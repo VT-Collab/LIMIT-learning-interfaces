@@ -6,8 +6,16 @@ import matplotlib.pyplot as plt
 from argparse import ArgumentParser
 
 
+# trains the interface using LIMIT.
+# @param model : models.LIMIT class
+# @param memory : LIMIT's ReplayMemory buffer, updated each timestep
+# @param batch_size : samples from memory per epoch
+# @param disting_optim : Adam Optimizer for Decoder, Interface networks
+# @param convey_optim : Adam Optimizer for Human Policy network
+# @param n_timesteps : number of timesteps per interaction
+# @param epochs : number of training rounds
 def train_LIMIT(model: LIMIT, memory: ReplayMemory, batch_size: int,
-                interface_optim: Adam, human_optim: Adam,
+                disting_optim: Adam, convey_optim: Adam,
                 n_timesteps=10, epochs=50):
     stdev = len(memory) / 5
     net_loss0 = 0.
@@ -19,28 +27,31 @@ def train_LIMIT(model: LIMIT, memory: ReplayMemory, batch_size: int,
         theta_batch = torch.FloatTensor(thetas)
         action_batch = torch.FloatTensor(actions)
         states_actions = torch.FloatTensor([])
+        # equation 13: acquire counterfactual states and actions
         for _ in range(n_timesteps):
             actions = model(s_clone, theta_batch)
             states_actions = torch.cat((states_actions,
                                         s_clone, actions), 1)
-            s_clone += actions
+            s_clone += actions  # equation 1: state transition
         theta_hat = model.decoder(states_actions)
         action_hat = model(state_batch, theta_batch)
-        loss0 = model.mse_loss(theta_hat, theta_batch)
-        loss1 = model.mse_loss(action_hat, action_batch)
-        loss = loss1 + loss0
+        loss0 = model.mse_loss(theta_hat, theta_batch)  # equation 14: train interface and decoder
+        loss1 = model.mse_loss(action_hat, action_batch)  # equation 13: train human model
+        loss = loss1 + loss0  # equation 15: train LIMIT
 
-        interface_optim.zero_grad()
-        human_optim.zero_grad()
+        disting_optim.zero_grad()
+        convey_optim.zero_grad()
         loss.backward()
-        interface_optim.step()
-        human_optim.step()
+        disting_optim.step()
+        convey_optim.step()
 
         net_loss0 += loss0.item()
         net_loss1 += loss1.item()
     return (net_loss0, net_loss1)
 
 
+# @param args : argparse namespace,
+#               see args.episodes and args.online
 def main(args) -> None:
     n_episodes = args.episodes
     n_timesteps = 10
@@ -78,15 +89,17 @@ def main(args) -> None:
                                      torch.FloatTensor(theta)))
             signal = interface.interface_policy(state_theta).detach().numpy()
             action = human(signal)
+            # update LIMIT's replay buffer with new datapoint
             interface_memory.push(state, action, signal, theta)
             states.append(state)
             actions.append(action)
             signals.append(signal)
             thetas.append(theta)
-            next_state = state + action
+            next_state = state + action  # equation 1: state transition
             state = next_state
             if args.online:
                 train_LIMIT(interface, interface_memory, int(batch_size / 4), disting_optim, convey_optim, epochs=4)
+        # update human's replay buffer with new interaction
         human_memory.push(states, actions, signals, thetas)
         l_dist, l_conv = train_LIMIT(interface, interface_memory, batch_size, disting_optim, convey_optim)
         human.optimize(human_memory, n_samples=15, n_scale=2, n_angle=12)
