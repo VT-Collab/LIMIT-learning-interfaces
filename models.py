@@ -99,7 +99,7 @@ class ReplayMemory:
         self.position = (self.position + 1) % self.capacity
         self.size = min(self.size + 1, self.capacity)
 
-    # randomly sample data from the batch, sampled from a
+    # randomly sample data from the buffer, sampled from a
     # uniform distribution. duplicate samples are possible
     # @param batch_size : number of datapoints to sample
     def sample(self, batch_size):
@@ -107,7 +107,7 @@ class ReplayMemory:
         states, actions, xs, thetas = map(np.stack, zip(*batch))
         return states, actions, xs, thetas
 
-    # randomly sample data from the batch, sampled from a
+    # randomly sample data from the buffer, sampled from a
     # halfnorm distribution centered at the current position.
     # duplicate samples are possible.
     # @param batch_size : number of datapoints to sample
@@ -154,10 +154,8 @@ class AlignHuman():
         return action
 
     # Trivial implementation of an optimizer for the AlignHuman.
-    # An off-the-shelf optimization tool such as those found in
-    # scipy can also be used for this. Given a replay buffer of
-    # past interactions, optimize finds the best scale and angle
-    # to use to minimize error between final state and theta.
+    # Given a replay buffer of past interactions, optimize finds the best
+    # scale and angle to use to minimize error between final state and theta.
     # @param memory : replay buffer of past interactions. Note that
     #                 this buffer's elements must be an array of states,
     #                 signals, etc. as opposed to single datapoints
