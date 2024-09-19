@@ -1,6 +1,6 @@
 # LIMIT: Learning Interfaces to Maximize Information Transfer
 
-This is a repository for our paper, ["LIMIT: Learning Interfaces to Maximize Information Transfer"](https://collab.me.vt.edu/pdfs/ben_thri23.pdf). We include:
+This is a repository for our paper, ["LIMIT: Learning Interfaces to Maximize Information Transfer"](https://collab.me.vt.edu/pdfs/ben_thri2023.pdf). We include:
 
 - Implementation of **LIMIT**
 - Custom 2D ("Lights") environment to test **LIMIT** with an *Align* Human (see our paper for more information)
